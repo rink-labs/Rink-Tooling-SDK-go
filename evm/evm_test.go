@@ -18,10 +18,10 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
-	"github.com/ava-labs/avalanche-tooling-sdk-go/constants"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/constants"
 
-	mockethclient "github.com/ava-labs/avalanche-tooling-sdk-go/mocks/ethclient"
 	ethereum "github.com/ava-labs/libevm"
+	mockethclient "github.com/rink-labs/Rink-Tooling-SDK-go/mocks/ethclient"
 )
 
 func TestHasScheme(t *testing.T) {

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/vms/components/avax"
 	"github.com/ava-labs/avalanchego/wallet/chain/x/builder"
 	"github.com/ava-labs/coreth/plugin/evm/atomic"
@@ -17,7 +18,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
-	"github.com/ava-labs/avalanche-tooling-sdk-go/keychain/cubesigner/cubesignermock"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/keychain/cubesigner/cubesignermock"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/network"
 
 	avmtxs "github.com/ava-labs/avalanchego/vms/avm/txs"
 	platformvmtxs "github.com/ava-labs/avalanchego/vms/platformvm/txs"
@@ -252,6 +254,9 @@ func TestCubesignerSigner_Sign(t *testing.T) {
 	signer, found := kc.Get(addr)
 	require.True(found)
 
+	materialID, err := address.FormatBech32(network.RinkMainnetHRP, addr.Bytes())
+	require.NoError(err)
+
 	// Test invalid transaction bytes (unable to auto-detect)
 	invalidTxBytes := []byte("invalid-transaction-bytes")
 	_, err = signer.Sign(invalidTxBytes)
@@ -259,7 +264,7 @@ func TestCubesignerSigner_Sign(t *testing.T) {
 	require.Contains(err.Error(), "unable to auto-detect chain")
 
 	// Create a valid P-chain transaction
-	networkID := uint32(1)
+	networkID := network.RinkMainnetID
 	pChainTx := &platformvmtxs.BaseTx{
 		BaseTx: avax.BaseTx{
 			NetworkID:    networkID,
@@ -278,7 +283,7 @@ func TestCubesignerSigner_Sign(t *testing.T) {
 	}
 	mockClient.EXPECT().AvaSerializedTxSign(
 		"P",
-		gomock.Any(), // materialID (Bech32 address)
+		materialID,
 		gomock.Any(), // request with hex-encoded tx
 	).Return(response, nil).Times(1)
 
@@ -300,7 +305,7 @@ func TestCubesignerSigner_Sign(t *testing.T) {
 	// Test successful X-chain signing
 	mockClient.EXPECT().AvaSerializedTxSign(
 		"X",
-		gomock.Any(), // materialID (Bech32 address)
+		materialID,
 		gomock.Any(), // request with hex-encoded tx
 	).Return(response, nil).Times(1)
 

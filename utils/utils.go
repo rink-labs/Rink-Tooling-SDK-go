@@ -9,7 +9,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/ava-labs/avalanche-tooling-sdk-go/constants"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/constants"
 )
 
 // Unique returns a new slice containing only the unique elements from the input slice.

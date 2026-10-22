@@ -18,7 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
-	"github.com/ava-labs/avalanche-tooling-sdk-go/keychain/ledger/ledgermock"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/keychain/ledger/ledgermock"
 )
 
 var errTest = errors.New("test")

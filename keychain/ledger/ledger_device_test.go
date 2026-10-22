@@ -14,7 +14,7 @@ import (
 
 const (
 	chainAlias = "P"
-	hrp        = "fuji"
+	hrp        = "rink"
 )
 
 // TestLedger will be skipped if a ledger is not connected.
@@ -32,7 +32,7 @@ func TestLedger(t *testing.T) {
 	require.NoError(err)
 	t.Logf("version: %s\n", version)
 
-	// Get Fuji Address
+	// Get RINK Address
 	pubKey, err := device.PubKey(0)
 	require.NoError(err)
 	addr := pubKey.Address()

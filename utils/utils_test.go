@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/ava-labs/avalanche-tooling-sdk-go/constants"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/constants"
 )
 
 func TestUnique(t *testing.T) {

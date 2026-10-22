@@ -10,19 +10,24 @@ import (
 	"os"
 	"time"
 
-	"github.com/ava-labs/avalanche-tooling-sdk-go/network"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/utils"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/wallet/local"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/wallet/types"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/network"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/utils"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/wallet/local"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/wallet/types"
 
-	pchainTxs "github.com/ava-labs/avalanche-tooling-sdk-go/wallet/txs/p-chain"
 	avagoTxs "github.com/ava-labs/avalanchego/vms/platformvm/txs"
+	pchainTxs "github.com/rink-labs/Rink-Tooling-SDK-go/wallet/txs/p-chain"
 )
 
 func ConvertSubnet(subnetID, chainID string) error {
 	ctx, cancel := utils.GetTimedContext(120 * time.Second)
 	defer cancel()
-	network := network.FujiNetwork()
+
+	rpcEndpoint := os.Getenv("RINK_RPC_ENDPOINT")
+	if rpcEndpoint == "" {
+		return fmt.Errorf("RINK_RPC_ENDPOINT must be set")
+	}
+	network := network.RinkMainnetNetwork().WithEndpoint(rpcEndpoint)
 
 	localWallet, err := local.NewLocalWallet()
 	if err != nil {
@@ -38,7 +43,7 @@ func ConvertSubnet(subnetID, chainID string) error {
 	nodeIDStr := "NodeID-xxxxx"
 	BLSPublicKey := "0x....,."        // Replace with actual BLS public key
 	BLSProofOfPossession := "0x....." // Replace with actual BLS proof of possession
-	ChangeOwnerAddr := "P-fujixxxx"
+	ChangeOwnerAddr := "P-rink1..."
 	ValidatorManagerAddress := "0x0FEEDC0DE0000000000000000000000000000000" // default validator manager address
 	Weight := 100                                                           // Validator weight
 	Balance := 1000000000                                                   // Validator balance in nAVAX
@@ -55,7 +60,7 @@ func ConvertSubnet(subnetID, chainID string) error {
 	bootstrapValidators = append(bootstrapValidators, bootstrapValidator)
 
 	convertSubnetParams := &pchainTxs.ConvertSubnetToL1TxParams{
-		SubnetAuthKeys: []string{"P-fujixxxxxx"},
+		SubnetAuthKeys: []string{"P-rink1..."},
 		SubnetID:       subnetID,
 		// ChainID is Blockchain ID of the L1 where the validator manager contract is deployed.
 		ChainID: chainID,

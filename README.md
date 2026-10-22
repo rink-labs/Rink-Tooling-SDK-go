@@ -1,448 +1,203 @@
-# Avalanche Tooling Go SDK
+# RINK Tooling Go SDK
 
-The official Avalanche Tooling Go SDK library.
+RINK's fork of the [Avalanche Tooling Go SDK](https://github.com/ava-labs/avalanche-tooling-sdk-go), adapted for the RINK network.
 
-*** Please note that this SDK is in experimental mode, major changes to the SDK are to be expected
-in between releases ***
+- Module: `github.com/rink-labs/Rink-Tooling-SDK-go`
+- Upstream project: `github.com/ava-labs/avalanche-tooling-sdk-go`
+- This repository was previously mirrored as `Rinkuby-Labs/Rinkuby-Tooling-SDK-go`; the canonical module path is `github.com/rink-labs/Rink-Tooling-SDK-go`.
 
-Current version (v0.3.0) currently supports: 
-- Create Subnet and Create Blockchain in a Subnet in Fuji / Mainnet. 
-- Create Avalanche Node (Validator / API / Monitoring / Load Test Node) & install all required
-dependencies (AvalancheGo, gcc, Promtail, Grafana, etc).
-- Enable Avalanche nodes to validate Primary Network
-- Adding Validators to a Subnet
-- Ledger SDK
+The SDK is experimental. Public APIs may change between releases.
 
-Currently, only stored keys are supported for transaction building and signing, ledger support is 
-coming soon.
+## Installation
 
-Future SDK releases will contain the following features (in order of priority): 
-- Additional Nodes SDK features (Devnet)
-- Additional Subnet SDK features (Custom Subnets)
-- Teleporter SDK
+```bash
+go get github.com/rink-labs/Rink-Tooling-SDK-go
+```
 
-## Getting Started
+Until the fork publishes a tagged release, use the branch explicitly:
 
-### Installing
-Use `go get` to retrieve the SDK to add it to your project's Go module dependencies.
+```bash
+go get github.com/rink-labs/Rink-Tooling-SDK-go@main
+```
 
-	go get github.com/ava-labs/avalanche-tooling-sdk-go
+## RINK network configuration
 
-To update the SDK use `go get -u` to retrieve the latest version of the SDK.
+All network IDs, address HRPs, and EVM chain IDs below are defined in `network/network.go` and were verified against the RINK node configuration:
 
-	go get -u github.com/ava-labs/avalanche-tooling-sdk-go
+| Network | Constructor | Avalanche network ID | Address HRP | C-Chain EVM chain ID | Default RPC endpoint |
+| --- | --- | ---: | --- | ---: | --- |
+| RINK mainnet | `network.RinkMainnetNetwork()` | `1` | `rink` | `90059` | none configured |
+| Chennai testnet | `network.ChennaiTestnetNetwork()` | `5` | `chennai` | `2099` | none configured |
+| Local RINK | `network.RinkLocalNetwork()` | `12345` | `local` | `43112` | `http://127.0.0.1:9650` |
+| Avalanche Fuji (explicit) | `network.FujiNetwork()` | `5` | `fuji` | `43113` | `https://api.avax-test.network` |
 
-## Quick Examples
+Sources in the RINK node repository (`rink-labs/rinkgo`):
 
-### Subnet SDK Example
+- `utils/constants/network_ids.go` for network IDs and HRPs.
+- `genesis/genesis_rink.json` and `genesis/genesis_chennai.json` for genesis network IDs.
+- `graft/coreth/params/config.go` for `RinkMainnetChainID`, `ChennaiChainID`, and `AvalancheLocalChainID`.
 
-This example shows how to create a Subnet Genesis, deploy the Subnet into Fuji Network and create
-a blockchain in the Subnet. 
+The value `64293` was suggested as a possible RINK network ID, but it does not appear in the RINK genesis or network configuration. It is not used by this SDK. See [Unverified values and limitations](#unverified-values-and-limitations).
 
-This examples also shows how to create a key pair to pay for transactions, how to create a Wallet
-object that will be used to build and sign CreateSubnetTx and CreateChainTx and how to commit these 
-transactions on chain.
+### Network ID is not EVM chain ID
 
-More examples can be found at examples directory.
+These are separate identifiers:
+
+- `Network.ID` is the Avalanche network ID used by P-Chain/X-Chain transactions and address HRP selection.
+- `Network.EVMChainID` is the C-Chain EVM `chainId`.
+
+For RINK mainnet they are `1` and `90059`; do not use one where the other is required.
+
+### Endpoints are explicit
+
+The SDK does not invent a public RINK RPC endpoint. RINK mainnet and Chennai testnet constructors leave `Endpoint` empty. Supply an endpoint before creating a wallet or making RPC calls:
 
 ```go
 package main
 
 import (
-	"context"
 	"fmt"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/avalanche"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/keychain"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/subnet"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/teleporter"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/vm"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/wallet"
-	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
-	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
-	"github.com/ava-labs/libevm/core"
-	"github.com/ava-labs/subnet-evm/params"
-	"github.com/ava-labs/libevm/common"
-	"math/big"
-	"time"
+	"os"
+
+	"github.com/rink-labs/Rink-Tooling-SDK-go/network"
 )
 
-// Creates a Subnet Genesis, deploys the Subnet into Fuji Network using CreateSubnetTx
-// and creates a blockchain in the Subnet using CreateChainTx
-func DeploySubnet() {
-	subnetParams := getDefaultSubnetEVMGenesis()
-	// Create new Subnet EVM genesis
-	newSubnet, _ := subnet.New(&subnetParams)
-
-	network := avalanche.FujiNetwork()
-
-	// Key that will be used for paying the transaction fees of CreateSubnetTx and CreateChainTx
-	// NewKeychain will generate a new key pair in the provided path if no .pk file currently
-	// exists in the provided path
-	keychain, _ := keychain.NewKeychain(network, "KEY_PATH", nil)
-
-	// In this example, we are using the fee-paying key generated above also as control key
-	// and subnet auth key
-
-	// Control keys are a list of keys that are permitted to make changes to a Subnet
-	// such as creating a blockchain in the Subnet and adding validators to the Subnet
-	controlKeys := keychain.Addresses().List()
-
-	// Subnet auth keys are a subset of control keys that will be used to sign transactions that 
-	// modify a Subnet (such as creating a blockchain in the Subnet and adding validators to the
-	// Subnet)
-	//
-	// Number of keys in subnetAuthKeys has to be equal to the threshold value provided during 
-	// CreateSubnetTx.
-	//
-	// All keys in subnetAuthKeys have to sign the transaction before the transaction
-	subnetAuthKeys := keychain.Addresses().List()
-	threshold := 1
-	newSubnet.SetSubnetControlParams(controlKeys, uint32(threshold))
-
-	wallet, _ := wallet.New(
-		context.Background(),
-		&primary.WalletConfig{
-			URI:              network.Endpoint,
-			AVAXKeychain:     keychain.Keychain,
-			EthKeychain:      secp256k1fx.NewKeychain(),
-			PChainTxsToFetch: nil,
-		},
-	)
-
-	// Build and Sign CreateSubnetTx with our fee paying key
-	deploySubnetTx, _ := newSubnet.CreateSubnetTx(wallet)
-	// Commit our CreateSubnetTx on chain
-	subnetID, _ := newSubnet.Commit(*deploySubnetTx, wallet, true)
-	fmt.Printf("subnetID %s \n", subnetID.String())
-
-	// we need to wait to allow the transaction to reach other nodes in Fuji
-	time.Sleep(2 * time.Second)
-
-	newSubnet.SetSubnetAuthKeys(subnetAuthKeys)
-	// Build and Sign CreateChainTx with our fee paying key (which is also our subnet auth key)
-	deployChainTx, _ := newSubnet.CreateBlockchainTx(wallet)
-	// Commit our CreateChainTx on chain
-	// Since we are using the fee paying key as control key too, we can commit the transaction
-	// on chain immediately since the number of signatures has been reached
-	blockchainID, _ := newSubnet.Commit(*deployChainTx, wallet, true)
-	fmt.Printf("blockchainID %s \n", blockchainID.String())
-}
-
-// Add a validator to Subnet
-func AddSubnetValidator() {
-	// We are using existing Subnet that we have already deployed on Fuji
-	subnetParams := subnet.SubnetParams{
-		GenesisFilePath: "GENESIS_FILE_PATH",
-		Name:            "SUBNET_NAME",
+func main() {
+	endpoint := os.Getenv("RINK_RPC_ENDPOINT")
+	rink := network.RinkMainnetNetwork().WithEndpoint(endpoint)
+	if err := rink.ValidateEndpoint(); err != nil {
+		panic(fmt.Errorf("RINK network is not configured: %w", err))
 	}
 
-	newSubnet, err := subnet.New(&subnetParams)
-	if err != nil {
-		panic(err)
-	}
-
-	subnetID, err := ids.FromString("SUBNET_ID")
-	if err != nil {
-		panic(err)
-	}
-
-	// Genesis doesn't contain the deployed Subnet's SubnetID, we need to first set the Subnet ID
-	newSubnet.SetSubnetID(subnetID)
-
-	// We are using existing host
-	node := node.Node{
-		// NodeID is Avalanche Node ID of the node
-		NodeID: "NODE_ID",
-		// IP address of the node
-		IP: "NODE_IP_ADDRESS",
-		// SSH configuration for the node
-		SSHConfig: node.SSHConfig{
-			User:           constants.RemoteHostUser,
-			PrivateKeyPath: "NODE_KEYPAIR_PRIVATE_KEY_PATH",
-		},
-		// Role is the role that we expect the host to be (Validator, API, AWMRelayer, Loadtest or
-		// Monitor)
-		Roles: []node.SupportedRole{node.Validator},
-	}
-
-	// Here we are assuming that the node is currently validating the Primary Network, which is
-	// a requirement before the node can start validating a Subnet.
-	// To have a node validate the Primary Network, call node.ValidatePrimaryNetwork
-	// Now we are calling the node to start tracking the Subnet
-	subnetIDsToValidate := []string{newSubnet.SubnetID.String()}
-	if err := node.SyncSubnets(subnetIDsToValidate); err != nil {
-		panic(err)
-	}
-
-	// Node is now tracking the Subnet
-
-	// Key that will be used for paying the transaction fees of Subnet AddValidator Tx
-	//
-	// In our example, this Key is also the control Key to the Subnet, so we are going to use
-	// this key to also sign the Subnet AddValidator tx
-	network := avalanche.FujiNetwork()
-	keychain, err := keychain.NewKeychain(network, "PRIVATE_KEY_FILEPATH", nil)
-	if err != nil {
-		panic(err)
-	}
-
-	wallet, err := wallet.New(
-		context.Background(),
-		&primary.WalletConfig{
-			URI:              network.Endpoint,
-			AVAXKeychain:     keychain.Keychain,
-			EthKeychain:      secp256k1fx.NewKeychain(),
-			PChainTxsToFetch: set.Of(subnetID),
-		},
-	)
-	if err != nil {
-		panic(err)
-	}
-
-	nodeID, err := ids.NodeIDFromString(node.NodeID)
-	if err != nil {
-		panic(err)
-	}
-
-	validatorParams := validator.SubnetValidatorParams{
-		NodeID: nodeID,
-		// Validate Subnet for 48 hours
-		Duration: 48 * time.Hour,
-		Weight:   20,
-	}
-
-	// We need to set Subnet Auth Keys for this transaction since Subnet AddValidator is
-	// a Subnet-changing transaction
-	//
-	// In this example, the example Subnet was created with only 1 key as control key with a threshold of 1
-	// and the control key is the key contained in the keychain object, so we are going to use the
-	// key contained in the keychain object as the Subnet Auth Key for Subnet AddValidator tx
-	subnetAuthKeys := keychain.Addresses().List()
-	newSubnet.SetSubnetAuthKeys(subnetAuthKeys)
-
-	addValidatorTx, err := newSubnet.AddValidator(wallet, validatorParams)
-	if err != nil {
-		panic(err)
-	}
-
-	// Since it has the required signatures, we will now commit the transaction on chain
-	txID, err := newSubnet.Commit(*addValidatorTx, wallet, true)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("obtained tx id %s", txID.String())
-}
-
-func getDefaultSubnetEVMGenesis() subnet.SubnetParams {
-	allocation := core.GenesisAlloc{}
-	defaultAmount, _ := new(big.Int).SetString(vm.DefaultEvmAirdropAmount, 10)
-	allocation[common.HexToAddress("INITIAL_ALLOCATION_ADDRESS")] = core.GenesisAccount{
-		Balance: defaultAmount,
-	}
-	return subnet.SubnetParams{
-		SubnetEVM: &subnet.SubnetEVMParams{
-			ChainID:     big.NewInt(123456),
-			FeeConfig:   vm.StarterFeeConfig,
-			Allocation:  allocation,
-			Precompiles: params.Precompiles{},
-		},
-		Name: "TestSubnet",
-	}
+	fmt.Println("network ID:", rink.ID)
+	fmt.Println("C-Chain EVM chain ID:", rink.EVMChainID)
 }
 ```
 
-### Nodes SDK Example
+For a local node, `network.RinkLocalNetwork()` already has the standard endpoint. To use Chennai or a custom deployment:
 
-This example shows how to create Avalanche Validator Nodes (SDK function for nodes to start 
-validating Primary Network / Subnet will be available in the next Avalanche Tooling SDK release).
+```go
+chennai := network.ChennaiTestnetNetwork().WithEndpoint(os.Getenv("RINK_TESTNET_RPC_ENDPOINT"))
+custom := network.NewNetwork(network.Devnet, 4242, "http://127.0.0.1:9650").WithHRP("custom")
+```
 
-This examples also shows how to create an Avalanche Monitoring Node, which enables you to have a 
-centralized Grafana Dashboard where you can view metrics relevant to any Validator & API nodes that
-the monitoring node is linked to as well as a centralized logs for the X/P/C Chain and Subnet logs 
-for the Validator & API nodes. An example on how the dashboard and logs look like can be found at https://docs.avax.network/tooling/cli-create-nodes/create-a-validator-aws
+`Validate()` checks network/HRP configuration. `ValidateEndpoint()` additionally requires a non-empty RPC endpoint.
 
-More examples can be found at examples directory.
+## Addresses and HRPs
+
+P/X chain addresses are bech32 strings with a network-specific human-readable part:
+
+- RINK mainnet: `P-rink1...` / `X-rink1...`
+- Chennai testnet: `P-chennai1...` / `X-chennai1...`
+- Local RINK: `P-local1...` / `X-local1...`
+
+The SDK uses the HRP on the `Network` object rather than blindly calling the upstream AvalancheGo `constants.GetHRP`. This matters because upstream maps network ID `1` to `avax`, while RINK mainnet uses `rink`.
+
+Address parsing and validation are available on `Network`:
+
+```go
+rink := network.RinkMainnetNetwork()
+
+// acct can be any account.Account implementation.
+addr, err := acct.GetPChainAddress(rink)
+if err != nil {
+	panic(err)
+}
+if err := rink.ValidateAddress(addr); err != nil {
+	panic(err) // includes network.ErrHRPMismatch for a different network
+}
+```
+
+`ValidateAddress` and `ParseAddress` reject an address whose HRP does not match the network. P-Chain transaction builders validate supplied control keys, subnet auth keys, and validator owner addresses before building a transaction. Address encoding/checksum logic remains in AvalancheGo; this fork only supplies the correct HRP.
+
+### Fuji is explicit, not a default
+
+The fork removes implicit Fuji selection:
+
+- `network.RinkMainnetNetwork()` is the RINK mainnet constructor.
+- `NetworkFromNetworkID(1)` returns RINK mainnet.
+- `NetworkFromNetworkID(5)` returns RINK Chennai, not Avalanche Fuji.
+- `network.FujiNetwork()` remains available for explicit upstream compatibility, but it is not selected by default and cannot be recovered from network ID 5 because that ID is shared with Chennai.
+
+The RinkGo node fork defines its own `FujiID` as `6` to avoid the Chennai collision. This SDK does not use that constant: `FujiNetwork()` targets the upstream Avalanche Fuji API and public archive, whose network ID is `5`. RINK deployments should use one of the RINK constructors instead.
+
+If you retain Fuji code paths, select them explicitly and keep RINK network configuration separate. The public archive downloader remains Fuji-only because the upstream archive URL is Fuji-specific; it now requires `network.FujiNetwork()` rather than matching a raw network ID.
+
+## Minimal example
 
 ```go
 package main
 
 import (
-	"context"
 	"fmt"
-	"time"
+	"os"
 
-	"github.com/ava-labs/avalanche-tooling-sdk-go/avalanche"
-	awsAPI "github.com/ava-labs/avalanche-tooling-sdk-go/cloud/aws"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/node"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/utils"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/account"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/network"
 )
 
-func CreateNodes() {
-	ctx := context.Background()
+func main() {
+	rink := network.RinkMainnetNetwork().WithEndpoint(os.Getenv("RINK_RPC_ENDPOINT"))
+	if err := rink.ValidateEndpoint(); err != nil {
+		panic(err)
+	}
 
-	// Get the default cloud parameters for AWS
-	cp, err := node.GetDefaultCloudParams(ctx, node.AWSCloud)
+	acct, err := account.NewLocalAccount()
 	if err != nil {
 		panic(err)
 	}
 
-	securityGroupName := "SECURITY_GROUP_NAME"
-	// Create a new security group in AWS if you do not currently have one in the selected
-	// AWS region.
-	sgID, err := awsAPI.CreateSecurityGroup(ctx, securityGroupName, cp.AWSConfig.AWSProfile, cp.Region)
-	if err != nil {
-		panic(err)
-	}
-	// Set the security group we are using when creating our Avalanche Nodes
-	cp.AWSConfig.AWSSecurityGroupID = sgID
-
-	keyPairName := "KEY_PAIR_NAME"
-	sshPrivateKeyPath := utils.ExpandHome("PRIVATE_KEY_FILEPATH")
-	// Create a new AWS SSH key pair if you do not currently have one in your selected AWS region.
-	// Note that the created key pair can only be used in the region that it was created in.
-	// The private key to the created key pair will be stored in the filepath provided in
-	// sshPrivateKeyPath.
-	if err := awsAPI.CreateSSHKeyPair(ctx, cp.AWSConfig.AWSProfile, cp.Region, keyPairName, sshPrivateKeyPath); err != nil {
-		panic(err)
-	}
-	// Set the key pair we are using when creating our Avalanche Nodes
-	cp.AWSConfig.AWSKeyPair = keyPairName
-
-	// Avalanche-CLI is installed in nodes to enable them to join subnets as validators
-	// Avalanche-CLI dependency by Avalanche nodes will be deprecated in the next release
-	// of Avalanche Tooling SDK
-	const (
-		avalancheGoVersion  = "v1.11.8"
-	)
-
-	// Create two new Avalanche Validator nodes on Fuji Network on AWS without Elastic IPs
-	// attached. Once CreateNodes is completed, the validators will begin bootstrapping process
-	// to Primary Network in Fuji Network. Nodes need to finish bootstrapping process
-	// before they can validate Avalanche Primary Network / Subnet.
-	//
-	// SDK function for nodes to start validating Primary Network / Subnet will be available
-	// in the next Avalanche Tooling SDK release.
-	hosts, err := node.CreateNodes(ctx,
-		&node.NodeParams{
-			CloudParams:         cp,
-			Count:               2,
-			Roles:               []node.SupportedRole{node.Validator},
-			Network:             avalanche.FujiNetwork(),
-			AvalancheGoVersion:  avalancheGoVersion,
-			UseStaticIP:         false,
-			SSHPrivateKeyPath:   sshPrivateKeyPath,
-		})
+	pChainAddress, err := acct.GetPChainAddress(rink)
 	if err != nil {
 		panic(err)
 	}
 
-	const (
-		sshTimeout        = 120 * time.Second
-		sshCommandTimeout = 10 * time.Second
-	)
-
-	// Examples showing how to run ssh commands on the created nodes
-	for _, h := range hosts {
-		// Wait for the host to be ready (only needs to be done once for newly created nodes)
-		fmt.Println("Waiting for SSH shell")
-		if err := h.WaitForSSHShell(sshTimeout); err != nil {
-			panic(err)
-		}
-		fmt.Println("SSH shell ready to execute commands")
-		// Run a command on the host
-		if output, err := h.Commandf(nil, sshCommandTimeout, "echo 'Hello, %s!'", "World"); err != nil {
-			panic(err)
-		} else {
-			fmt.Println(string(output))
-		}
-		// sleep for 10 seconds allowing AvalancheGo container to start
-		time.Sleep(10 * time.Second)
-		// check if avalanchego is running
-		if output, err := h.Commandf(nil, sshCommandTimeout, "docker ps"); err != nil {
-			panic(err)
-		} else {
-			fmt.Println(string(output))
-		}
-	}
-
-	// Create a monitoring node.
-	// Monitoring node enables you to have a centralized Grafana Dashboard where you can view
-	// metrics relevant to any Validator & API nodes that the monitoring node is linked to as well
-	// as a centralized logs for the X/P/C Chain and Subnet logs for the Validator & API nodes.
-	// An example on how the dashboard and logs look like can be found at https://docs.avax.network/tooling/cli-create-nodes/create-a-validator-aws
-	monitoringHosts, err := node.CreateNodes(ctx,
-		&node.NodeParams{
-			CloudParams:       cp,
-			Count:             1,
-			Roles:             []node.SupportedRole{node.Monitor},
-			UseStaticIP:       false,
-			SSHPrivateKeyPath: sshPrivateKeyPath,
-		})
-	if err != nil {
-		panic(err)
-	}
-
-	// Link the 2 validator nodes previously created with the monitoring host so that
-	// the monitoring host can start tracking the validator nodes metrics and collecting their logs
-	if err := monitoringHosts[0].MonitorNodes(ctx, hosts, ""); err != nil {
-		panic(err)
-	}
+	fmt.Println(pChainAddress) // P-rink1...
 }
-
-func ValidatePrimaryNetwork() {
-	// We are using existing host
-	node := node.Node{
-		// NodeID is Avalanche Node ID of the node
-		NodeID: "NODE_ID",
-		// IP address of the node
-		IP: "NODE_IP_ADDRESS",
-		// SSH configuration for the node
-		SSHConfig: node.SSHConfig{
-			User:           constants.RemoteHostUser,
-			PrivateKeyPath: "NODE_KEYPAIR_PRIVATE_KEY_PATH",
-		},
-		// Role of the node can be 	Validator, API, AWMRelayer, Loadtest, or Monitor
-		Roles: []node.SupportedRole{node.Validator},
-	}
-
-	nodeID, err := ids.NodeIDFromString(node.NodeID)
-	if err != nil {
-		panic(err)
-	}
-
-	validatorParams := validator.PrimaryNetworkValidatorParams{
-		NodeID: nodeID,
-		// Validate Primary Network for 48 hours
-		Duration: 48 * time.Hour,
-		// Stake 2 AVAX
-		StakeAmount: 2 * units.Avax,
-	}
-
-	// Key that will be used for paying the transaction fee of AddValidator Tx
-	network := avalanche.FujiNetwork()
-	keychain, err := keychain.NewKeychain(network, "PRIVATE_KEY_FILEPATH", nil)
-	if err != nil {
-		panic(err)
-	}
-
-	wallet, err := wallet.New(
-		context.Background(),
-		&primary.WalletConfig{
-			URI:              network.Endpoint,
-			AVAXKeychain:     keychain.Keychain,
-			EthKeychain:      secp256k1fx.NewKeychain(),
-			PChainTxsToFetch: nil,
-		},
-	)
-	if err != nil {
-		panic(err)
-	}
-
-	txID, err := node.ValidatePrimaryNetwork(avalanche.FujiNetwork(), validatorParams, wallet)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("obtained tx id %s", txID.String())
-}
-
 ```
+
+More examples are in `example/`, `examples/`, and `interchain/`. Examples that connect to a node read `RINK_RPC_ENDPOINT`; no example silently connects to Fuji.
+
+## Development and verification
+
+Use the same toolchain as `go.mod`:
+
+```bash
+gofmt -w .
+go mod tidy
+go mod verify
+go test ./...
+go vet ./...
+```
+
+The public archive end-to-end test downloads a large external archive and is skipped unless explicitly enabled:
+
+```bash
+RUN_PUBLIC_ARCHIVE_E2E=1 go test ./publicarchive -run TestDownloader_EndToEnd
+```
+
+## Upgrading from upstream
+
+This fork tracks the upstream Avalanche Tooling SDK. To update it:
+
+1. Fetch the desired upstream release or commit.
+2. Merge it into a feature branch without dropping RINK-specific changes.
+3. Keep the module path as `github.com/rink-labs/Rink-Tooling-SDK-go`.
+4. Replace only SDK self-imports; leave third-party `github.com/ava-labs/*` imports intact. In particular, this SDK currently depends on upstream AvalancheGo and does not use a `replace` directive for RinkGo.
+5. Recheck `network/network.go`, `key/soft_key.go`, and `keychain/cubesigner/cubesigner_keychain.go` for RINK ID/HRP behavior.
+6. Re-run `gofmt`, `go mod tidy`, `go mod verify`, `go test ./...`, and `go vet ./...`.
+7. Revalidate RINK network values against the RINK node repository before changing constants.
+
+## Unverified values and limitations
+
+- **`64293` is not a verified RINK network ID.** The verified RINK mainnet network ID is `1`.
+- **No public RINK RPC endpoint is configured.** Callers must provide one. Local examples use `http://127.0.0.1:9650`.
+- **No RINK genesis or blockchain IDs are bundled.** Obtain them from the deployment/node or a trusted configuration source; do not hard-code unverified values.
+- **Fuji collision:** upstream Avalanche Fuji and RINK Chennai both use network ID `5`. Explicit Fuji selection must not depend on `NetworkFromNetworkID(5)`.
+- **CubeSigner and Fuji:** CubeSigner signing resolves the address HRP from the transaction's network ID alone. Network ID `5` is treated as Chennai, so CubeSigner cannot distinguish an explicit Avalanche Fuji transaction in this fork.
+- **Upstream dependency:** this repository depends on upstream AvalancheGo modules. RinkGo is a separate node fork; compatibility of node-specific behavior must be validated against the target RINK node version.
+- **Public archive:** only the Fuji archive URL is known; RINK archive support requires a verified URL.
+
+## License
+
+See [LICENSE](LICENSE). Upstream copyright and license notices are retained.

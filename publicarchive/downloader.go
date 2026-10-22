@@ -18,10 +18,8 @@ import (
 	"github.com/cavaliergopher/grab/v3"
 	"go.uber.org/zap"
 
-	"github.com/ava-labs/avalanche-tooling-sdk-go/constants"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/network"
-
-	avagoConstants "github.com/ava-labs/avalanchego/utils/constants"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/constants"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/network"
 )
 
 const (
@@ -64,31 +62,29 @@ func newGetter(endpoint string, target string) (Getter, error) {
 // TODO: improve locks to provide graceful recovery under signals such as SIGTERM
 
 // NewDownloader returns a new Downloader
-// network: the network to download from ( fuji only).
+// net: the network to download from (explicit Avalanche Fuji only).
 // target: the path to download to
 // logLevel: the log level
 func NewDownloader(
-	network network.Network,
+	net network.Network,
 	logger logging.Logger,
 ) (Downloader, error) {
-	tmpFile, err := os.CreateTemp("", "avalanche-tooling-sdk-go-public-archive-*")
+	if net.Kind != network.Fuji {
+		return Downloader{}, fmt.Errorf("unsupported network %s: Fuji only supported", net.Kind)
+	}
+
+	tmpFile, err := os.CreateTemp("", "rink-tooling-sdk-go-public-archive-*")
 	if err != nil {
 		return Downloader{}, err
 	}
-
-	switch network.ID {
-	case avagoConstants.FujiID:
-		if getter, err := newGetter(PChainArchiveFuji, tmpFile.Name()); err != nil {
-			return Downloader{}, err
-		} else {
-			return Downloader{
-				getter:    getter,
-				logger:    logger,
-				currentOp: &sync.Mutex{},
-			}, nil
-		}
-	default:
-		return Downloader{}, fmt.Errorf("unsupported network ID: %d. Fuji only supported", network.ID)
+	if getter, err := newGetter(PChainArchiveFuji, tmpFile.Name()); err != nil {
+		return Downloader{}, err
+	} else {
+		return Downloader{
+			getter:    getter,
+			logger:    logger,
+			currentOp: &sync.Mutex{},
+		}, nil
 	}
 }
 

@@ -20,8 +20,8 @@ import (
 	"github.com/ava-labs/subnet-evm/plugin/evm/upgrade/legacy"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/warp"
 
-	"github.com/ava-labs/avalanche-tooling-sdk-go/constants"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/utils"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/constants"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/utils"
 
 	avalancheWarp "github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	ethereum "github.com/ava-labs/libevm"

@@ -7,8 +7,8 @@ import (
 
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 
-	"github.com/ava-labs/avalanche-tooling-sdk-go/key"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/network"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/key"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/network"
 )
 
 // LocalAccount represents a local account implementation

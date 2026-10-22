@@ -19,7 +19,7 @@ import (
 	"github.com/cubist-labs/cubesigner-go-sdk/client"
 	"github.com/cubist-labs/cubesigner-go-sdk/session"
 
-	"github.com/ava-labs/avalanche-tooling-sdk-go/keychain/cubesigner"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/keychain/cubesigner"
 )
 
 func main() {
@@ -58,11 +58,17 @@ func main() {
 		return
 	}
 
+	rinkEndpoint := os.Getenv("RINK_RPC_ENDPOINT")
+	if rinkEndpoint == "" {
+		log.Printf("RINK_RPC_ENDPOINT environment variable is required")
+		return
+	}
+
 	// Create wallet for P-chain operations
 	ctx := context.Background()
 	walletPChain, err := primary.MakeWallet(
 		ctx,
-		primary.FujiAPIURI,
+		rinkEndpoint,
 		kcPChain,
 		kcPChain,
 		primary.WalletConfig{},
@@ -106,7 +112,7 @@ func main() {
 	// Create wallet for C-chain operations
 	walletCChain, err := primary.MakeWallet(
 		ctx,
-		primary.FujiAPIURI,
+		rinkEndpoint,
 		kcCChain,
 		kcCChain,
 		primary.WalletConfig{},

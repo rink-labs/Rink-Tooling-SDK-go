@@ -12,15 +12,15 @@ import (
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary/common"
 
-	"github.com/ava-labs/avalanche-tooling-sdk-go/account"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/multisig"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/network"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/utils"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/wallet"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/wallet/types"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/account"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/multisig"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/network"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/utils"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/wallet"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/wallet/types"
 
-	txs "github.com/ava-labs/avalanche-tooling-sdk-go/wallet/txs/p-chain"
 	avagoTxs "github.com/ava-labs/avalanchego/vms/platformvm/txs"
+	txs "github.com/rink-labs/Rink-Tooling-SDK-go/wallet/txs/p-chain"
 )
 
 // ChainClients is now defined in the wallet package
@@ -135,6 +135,9 @@ func extractSubnetIDFromTx(tx interface{}) (ids.ID, error) {
 }
 
 func (w *LocalWallet) loadAccountIntoWallet(ctx context.Context, account account.Account, network network.Network, txInput interface{}) error {
+	if err := network.ValidateEndpoint(); err != nil {
+		return err
+	}
 	keychain, err := account.GetKeychain()
 	if err != nil {
 		return err

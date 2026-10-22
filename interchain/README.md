@@ -12,8 +12,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ava-labs/avalanche-tooling-sdk-go/network"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/interchain"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/network"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/interchain"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"go.uber.org/zap"
@@ -21,9 +21,9 @@ import (
 )
 
 func main() {
-	network := network.FujiNetwork()
+	rink := network.RinkMainnetNetwork().WithEndpoint(os.Getenv("RINK_RPC_ENDPOINT"))
 	aggregator, err := interchain.NewSignatureAggregator(
-		network,
+		rink,
 		logging.NewLogger(
 			"aggregator_test",
 			logging.NewWrappedCore(

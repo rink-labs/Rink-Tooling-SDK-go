@@ -9,8 +9,8 @@ import (
 	"github.com/ava-labs/avalanchego/utils/rpc"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 
-	"github.com/ava-labs/avalanche-tooling-sdk-go/network"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/utils"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/network"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/utils"
 
 	avalanchegojson "github.com/ava-labs/avalanchego/utils/json"
 )

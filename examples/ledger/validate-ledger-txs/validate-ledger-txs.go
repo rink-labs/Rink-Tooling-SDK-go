@@ -13,8 +13,8 @@
 //     (ImportTx, ExportTx)
 //   - C-Chain: Atomic transactions for cross-chain transfers (ImportTx, ExportTx)
 //
-// The example connects to both a local Avalanche network and Fuji testnet. The local network is
-// used for P-Chain operations, while Fuji testnet is used for X-Chain and C-Chain operations
+// The example connects to a local network and a configured RINK endpoint. The local network is
+// used for P-Chain operations, while the RINK endpoint is used for X-Chain and C-Chain operations
 // (as custom local network operations for X-Chain and C-Chain are not yet implemented).
 // Some transactions are issued to the network while others are only built and signed for validation purposes.
 //
@@ -23,7 +23,7 @@
 // - Avalanche app open on the Ledger
 // - Local Avalanche network running
 // - Sufficient AVAX balance on local network for the Ledger address
-// - Sufficient AVAX balance on Fuji testnet for the Ledger address
+// - Sufficient AVAX balance on the configured RINK network for the Ledger address
 package main
 
 import (
@@ -31,6 +31,7 @@ import (
 	"fmt"
 	"log"
 	"math/big"
+	"os"
 	"time"
 
 	"github.com/ava-labs/avalanchego/ids"
@@ -48,18 +49,20 @@ import (
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary/common"
 	"github.com/ava-labs/coreth/plugin/evm/atomic"
 
-	"github.com/ava-labs/avalanche-tooling-sdk-go/keychain/ledger"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/keychain/ledger"
 
 	avmtxs "github.com/ava-labs/avalanchego/vms/avm/txs"
 	ethcommon "github.com/ava-labs/libevm/common"
 )
 
-const (
-	localEndpoint = "http://localhost:9650"
-	fujiEndpoint  = "https://api.avax-test.network"
-)
+const localEndpoint = "http://localhost:9650"
 
 func main() {
+	rinkEndpoint := os.Getenv("RINK_RPC_ENDPOINT")
+	if rinkEndpoint == "" {
+		log.Fatal("RINK_RPC_ENDPOINT environment variable is required")
+	}
+
 	fmt.Println("Setting up Ledger connection...")
 	fmt.Println("Make sure your Ledger device is connected and the Avalanche app is open.")
 
@@ -93,21 +96,21 @@ func main() {
 
 	fmt.Println("Wallet created successfully!")
 
-	fmt.Println("\nCreating Fuji wallet context...")
-	fujiCtx, fujiCancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer fujiCancel()
+	fmt.Println("\nCreating RINK wallet context...")
+	rinkCtx, rinkCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer rinkCancel()
 
-	fujiWallet, err := primary.MakeWallet(
-		fujiCtx,
-		fujiEndpoint,
+	rinkWallet, err := primary.MakeWallet(
+		rinkCtx,
+		rinkEndpoint,
 		kc,
 		kc,
 		primary.WalletConfig{},
 	)
 	if err != nil {
-		log.Fatalf("Failed to create fuji wallet: %v", err)
+		log.Fatalf("Failed to create rink wallet: %v", err)
 	}
-	fmt.Println("Fuji wallet created successfully!")
+	fmt.Println("RINK wallet created successfully!")
 
 	controlKeys := kc.Addresses().List()
 	threshold := uint32(1)
@@ -219,9 +222,9 @@ func main() {
 	}
 	fmt.Printf("   Tx ID: %s\n", addDelegatorTx.ID())
 
-	// 10. ExportTx (P-Chain to X-Chain) - Using Fuji network for known chain IDs
-	fmt.Println("\n10. Building and issuing ExportTx transaction (using Fuji network)...")
-	exportTx, err := buildAndSignPChainExportTx(fujiWallet, owners, fujiWallet.X().Builder().Context().BlockchainID)
+	// 10. ExportTx (P-Chain to X-Chain) - Using RINK network for known chain IDs
+	fmt.Println("\n10. Building and issuing ExportTx transaction (using RINK network)...")
+	exportTx, err := buildAndSignPChainExportTx(rinkWallet, owners, rinkWallet.X().Builder().Context().BlockchainID)
 	if err != nil {
 		log.Fatalf("Failed to create ExportTx: %v", err)
 	}
@@ -231,14 +234,14 @@ func main() {
 	pExportIssueCtx, pExportIssueCancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer pExportIssueCancel()
 
-	if err := fujiWallet.P().IssueTx(exportTx, common.WithContext(pExportIssueCtx)); err != nil {
+	if err := rinkWallet.P().IssueTx(exportTx, common.WithContext(pExportIssueCtx)); err != nil {
 		log.Fatalf("Failed to issue P-Chain ExportTx: %v", err)
 	}
 	fmt.Println("   ✓ P-Chain ExportTx issued successfully!")
 
 	// 11. X-Chain Import (from P-Chain)
 	fmt.Println("\n11. Building and issuing X-Chain ImportTx (from P-Chain)...")
-	xChainImportTx, err := buildAndSignXChainImportTx(fujiWallet, owners, constants.PlatformChainID)
+	xChainImportTx, err := buildAndSignXChainImportTx(rinkWallet, owners, constants.PlatformChainID)
 	if err != nil {
 		log.Fatalf("Failed to create X-Chain ImportTx: %v", err)
 	}
@@ -248,14 +251,14 @@ func main() {
 	xImportIssueCtx, xImportIssueCancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer xImportIssueCancel()
 
-	if err := fujiWallet.X().IssueTx(xChainImportTx, common.WithContext(xImportIssueCtx)); err != nil {
+	if err := rinkWallet.X().IssueTx(xChainImportTx, common.WithContext(xImportIssueCtx)); err != nil {
 		log.Fatalf("Failed to issue X-Chain ImportTx: %v", err)
 	}
 	fmt.Println("   ✓ X-Chain ImportTx issued successfully!")
 
 	// 12. X-Chain Export (required for ImportTx)
 	fmt.Println("\n12. Building and issuing X-Chain ExportTx (to enable P-Chain import)...")
-	xChainExportTx, err := buildAndSignXChainExportTx(fujiWallet, owners, constants.PlatformChainID)
+	xChainExportTx, err := buildAndSignXChainExportTx(rinkWallet, owners, constants.PlatformChainID)
 	if err != nil {
 		log.Fatalf("Failed to create X-Chain ExportTx: %v", err)
 	}
@@ -265,14 +268,14 @@ func main() {
 	xExportIssueCtx, xExportIssueCancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer xExportIssueCancel()
 
-	if err := fujiWallet.X().IssueTx(xChainExportTx, common.WithContext(xExportIssueCtx)); err != nil {
+	if err := rinkWallet.X().IssueTx(xChainExportTx, common.WithContext(xExportIssueCtx)); err != nil {
 		log.Fatalf("Failed to issue X-Chain ExportTx: %v", err)
 	}
 	fmt.Println("   ✓ X-Chain ExportTx issued successfully!")
 
 	// 13. X-Chain BaseTx
 	fmt.Println("\n13. Building X-Chain BaseTx (without issuance)...")
-	xChainBaseTx, err := buildAndSignXChainBaseTx(fujiWallet, controlKeys[0])
+	xChainBaseTx, err := buildAndSignXChainBaseTx(rinkWallet, controlKeys[0])
 	if err != nil {
 		log.Fatalf("Failed to create X-Chain BaseTx: %v", err)
 	}
@@ -280,7 +283,7 @@ func main() {
 
 	// 14. X-Chain CreateAssetTx
 	fmt.Println("\n14. Building X-Chain CreateAssetTx (without issuance)...")
-	xChainCreateAssetTx, err := buildAndSignXChainCreateAssetTx(fujiWallet, controlKeys[0])
+	xChainCreateAssetTx, err := buildAndSignXChainCreateAssetTx(rinkWallet, controlKeys[0])
 	if err != nil {
 		log.Fatalf("Failed to create X-Chain CreateAssetTx: %v", err)
 	}
@@ -288,7 +291,7 @@ func main() {
 
 	// 15. X-Chain OperationTx
 	fmt.Println("\n15. Building X-Chain OperationTx (without issuance)...")
-	xChainOperationTx, err := buildAndSignXChainOperationTx(fujiWallet)
+	xChainOperationTx, err := buildAndSignXChainOperationTx(rinkWallet)
 	if err != nil {
 		log.Fatalf("Failed to create X-Chain OperationTx: %v", err)
 	}
@@ -296,8 +299,8 @@ func main() {
 
 	// 16. P-Chain ExportTx to C-Chain
 	fmt.Println("\n16. Building and issuing P-Chain ExportTx to C-Chain...")
-	cChainID := fujiWallet.C().Builder().Context().BlockchainID
-	pToC_ExportTx, err := buildAndSignPChainExportTx(fujiWallet, owners, cChainID)
+	cChainID := rinkWallet.C().Builder().Context().BlockchainID
+	pToC_ExportTx, err := buildAndSignPChainExportTx(rinkWallet, owners, cChainID)
 	if err != nil {
 		log.Fatalf("Failed to create P-Chain ExportTx to C-Chain: %v", err)
 	}
@@ -307,7 +310,7 @@ func main() {
 	pToC_ExportIssueCtx, pToC_ExportIssueCancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer pToC_ExportIssueCancel()
 
-	if err := fujiWallet.P().IssueTx(pToC_ExportTx, common.WithContext(pToC_ExportIssueCtx)); err != nil {
+	if err := rinkWallet.P().IssueTx(pToC_ExportTx, common.WithContext(pToC_ExportIssueCtx)); err != nil {
 		log.Fatalf("Failed to issue P-Chain ExportTx to C-Chain: %v", err)
 	}
 	fmt.Println("   ✓ P-Chain ExportTx to C-Chain issued successfully!")
@@ -320,7 +323,7 @@ func main() {
 	}
 	ethAddr := pubKey.EthAddress()
 	fmt.Println("ETH ADDR:", ethAddr)
-	cChainImportTx, err := buildAndSignCChainImportTx(fujiWallet, ethAddr, constants.PlatformChainID)
+	cChainImportTx, err := buildAndSignCChainImportTx(rinkWallet, ethAddr, constants.PlatformChainID)
 	if err != nil {
 		log.Fatalf("Failed to create C-Chain ImportTx: %v", err)
 	}
@@ -330,14 +333,14 @@ func main() {
 	cImportIssueCtx, cImportIssueCancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cImportIssueCancel()
 
-	if err := fujiWallet.C().IssueAtomicTx(cChainImportTx, common.WithContext(cImportIssueCtx)); err != nil {
+	if err := rinkWallet.C().IssueAtomicTx(cChainImportTx, common.WithContext(cImportIssueCtx)); err != nil {
 		log.Fatalf("Failed to issue C-Chain ImportTx: %v", err)
 	}
 	fmt.Println("   ✓ C-Chain ImportTx issued successfully!")
 
 	// 18. C-Chain ExportTx to P-Chain
 	fmt.Println("\n18. Building and issuing C-Chain ExportTx to P-Chain...")
-	cChainExportTx, err := buildAndSignCChainExportTx(fujiWallet, owners, constants.PlatformChainID)
+	cChainExportTx, err := buildAndSignCChainExportTx(rinkWallet, owners, constants.PlatformChainID)
 	if err != nil {
 		log.Fatalf("Failed to create C-Chain ExportTx: %v", err)
 	}
@@ -347,14 +350,14 @@ func main() {
 	cExportIssueCtx, cExportIssueCancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cExportIssueCancel()
 
-	if err := fujiWallet.C().IssueAtomicTx(cChainExportTx, common.WithContext(cExportIssueCtx)); err != nil {
+	if err := rinkWallet.C().IssueAtomicTx(cChainExportTx, common.WithContext(cExportIssueCtx)); err != nil {
 		log.Fatalf("Failed to issue C-Chain ExportTx: %v", err)
 	}
 	fmt.Println("   ✓ C-Chain ExportTx issued successfully!")
 
 	// 19. P-Chain ImportTx from C-Chain
 	fmt.Println("\n19. Building and issuing P-Chain ImportTx from C-Chain...")
-	cToP_ImportTx, err := buildAndSignPChainImportTx(fujiWallet, owners, cChainID)
+	cToP_ImportTx, err := buildAndSignPChainImportTx(rinkWallet, owners, cChainID)
 	if err != nil {
 		log.Fatalf("Failed to create P-Chain ImportTx from C-Chain: %v", err)
 	}
@@ -364,14 +367,14 @@ func main() {
 	cToP_ImportIssueCtx, cToP_ImportIssueCancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cToP_ImportIssueCancel()
 
-	if err := fujiWallet.P().IssueTx(cToP_ImportTx, common.WithContext(cToP_ImportIssueCtx)); err != nil {
+	if err := rinkWallet.P().IssueTx(cToP_ImportTx, common.WithContext(cToP_ImportIssueCtx)); err != nil {
 		log.Fatalf("Failed to issue P-Chain ImportTx from C-Chain: %v", err)
 	}
 	fmt.Println("   ✓ P-Chain ImportTx from C-Chain issued successfully!")
 
 	// 20. P-Chain ImportTx from X-Chain
 	fmt.Println("\n20. Building and issuing P-Chain ImportTx from X-Chain...")
-	importTx, err := buildAndSignPChainImportTx(fujiWallet, owners, fujiWallet.X().Builder().Context().BlockchainID)
+	importTx, err := buildAndSignPChainImportTx(rinkWallet, owners, rinkWallet.X().Builder().Context().BlockchainID)
 	if err != nil {
 		log.Fatalf("Failed to create ImportTx: %v", err)
 	}
@@ -381,7 +384,7 @@ func main() {
 	pImportIssueCtx, pImportIssueCancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer pImportIssueCancel()
 
-	if err := fujiWallet.P().IssueTx(importTx, common.WithContext(pImportIssueCtx)); err != nil {
+	if err := rinkWallet.P().IssueTx(importTx, common.WithContext(pImportIssueCtx)); err != nil {
 		log.Fatalf("Failed to issue P-Chain ImportTx: %v", err)
 	}
 	fmt.Println("   ✓ P-Chain ImportTx issued successfully!")

@@ -15,29 +15,33 @@ import (
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary/common"
 
-	"github.com/ava-labs/avalanche-tooling-sdk-go/account"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/wallet/types"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/account"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/network"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/wallet/types"
 
-	pchainTxs "github.com/ava-labs/avalanche-tooling-sdk-go/wallet/txs/p-chain"
 	avagoTxs "github.com/ava-labs/avalanchego/vms/platformvm/txs"
+	pchainTxs "github.com/rink-labs/Rink-Tooling-SDK-go/wallet/txs/p-chain"
 )
 
 // BuildTx builds P-Chain transactions
 func BuildTx(wallet *primary.Wallet, account account.Account, params types.BuildTxParams) (types.BuildTxResult, error) {
 	switch txType := params.BuildTxInput.(type) {
 	case *pchainTxs.CreateSubnetTxParams:
-		return buildCreateSubnetTx(wallet, txType)
+		return buildCreateSubnetTx(wallet, params.Network, txType)
 	case *pchainTxs.CreateChainTxParams:
-		return buildCreateChainTx(wallet, account, txType)
+		return buildCreateChainTx(wallet, account, params.Network, txType)
 	case *pchainTxs.ConvertSubnetToL1TxParams:
-		return buildConvertSubnetToL1Tx(wallet, account, txType)
+		return buildConvertSubnetToL1Tx(wallet, account, params.Network, txType)
 	default:
 		return types.BuildTxResult{}, fmt.Errorf("unsupported P-Chain transaction type: %T", params.BuildTxInput)
 	}
 }
 
 // buildCreateSubnetTx provides a default implementation that can be used by any wallet
-func buildCreateSubnetTx(wallet *primary.Wallet, params *pchainTxs.CreateSubnetTxParams) (types.BuildTxResult, error) {
+func buildCreateSubnetTx(wallet *primary.Wallet, net network.Network, params *pchainTxs.CreateSubnetTxParams) (types.BuildTxResult, error) {
+	if err := net.ValidateAddresses(params.ControlKeys); err != nil {
+		return types.BuildTxResult{}, fmt.Errorf("failure validating control keys: %w", err)
+	}
 	addrs, err := address.ParseToIDs(params.ControlKeys)
 	if err != nil {
 		return types.BuildTxResult{}, fmt.Errorf("failure parsing control keys: %w", err)
@@ -59,8 +63,8 @@ func buildCreateSubnetTx(wallet *primary.Wallet, params *pchainTxs.CreateSubnetT
 }
 
 // buildCreateChainTx provides a default implementation that can be used by any wallet
-func buildCreateChainTx(wallet *primary.Wallet, account account.Account, params *pchainTxs.CreateChainTxParams) (types.BuildTxResult, error) {
-	subnetAuthKeys, err := convertSubnetAuthKeys(params.SubnetAuthKeys)
+func buildCreateChainTx(wallet *primary.Wallet, account account.Account, net network.Network, params *pchainTxs.CreateChainTxParams) (types.BuildTxResult, error) {
+	subnetAuthKeys, err := convertSubnetAuthKeys(net, params.SubnetAuthKeys)
 	if err != nil {
 		return types.BuildTxResult{}, fmt.Errorf("failed to convert subnet auth keys: %w", err)
 	}
@@ -91,8 +95,18 @@ func buildCreateChainTx(wallet *primary.Wallet, account account.Account, params 
 }
 
 // buildConvertSubnetToL1Tx provides a default implementation that can be used by any wallet
-func buildConvertSubnetToL1Tx(wallet *primary.Wallet, account account.Account, params *pchainTxs.ConvertSubnetToL1TxParams) (types.BuildTxResult, error) {
-	subnetAuthKeys, err := convertSubnetAuthKeys(params.SubnetAuthKeys)
+func buildConvertSubnetToL1Tx(wallet *primary.Wallet, account account.Account, net network.Network, params *pchainTxs.ConvertSubnetToL1TxParams) (types.BuildTxResult, error) {
+	for _, validator := range params.Validators {
+		if err := net.ValidateAddress(validator.RemainingBalanceOwner); err != nil {
+			return types.BuildTxResult{}, fmt.Errorf("failure validating remaining balance owner: %w", err)
+		}
+		if validator.DeactivationOwner != "" {
+			if err := net.ValidateAddress(validator.DeactivationOwner); err != nil {
+				return types.BuildTxResult{}, fmt.Errorf("failure validating deactivation owner: %w", err)
+			}
+		}
+	}
+	subnetAuthKeys, err := convertSubnetAuthKeys(net, params.SubnetAuthKeys)
 	if err != nil {
 		return types.BuildTxResult{}, fmt.Errorf("failed to convert subnet auth keys: %w", err)
 	}
@@ -150,7 +164,10 @@ func getMultisigTxOptions(account account.Account, subnetAuthKeys []ids.ShortID)
 }
 
 // convertSubnetAuthKeys converts a slice of string addresses to a slice of ShortIDs
-func convertSubnetAuthKeys(subnetAuthKeys []string) ([]ids.ShortID, error) {
+func convertSubnetAuthKeys(net network.Network, subnetAuthKeys []string) ([]ids.ShortID, error) {
+	if err := net.ValidateAddresses(subnetAuthKeys); err != nil {
+		return nil, fmt.Errorf("failed to validate subnet auth keys: %w", err)
+	}
 	subnetAuthKeyIDs, err := address.ParseToIDs(subnetAuthKeys)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert subnet auth key %s to ShortID: %w", subnetAuthKeys, err)

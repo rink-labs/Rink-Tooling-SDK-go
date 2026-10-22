@@ -5,8 +5,8 @@ package wallet
 import (
 	"context"
 
-	"github.com/ava-labs/avalanche-tooling-sdk-go/account"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/wallet/types"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/account"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/wallet/types"
 )
 
 // ChainClients is now defined in wallet/types/common.go

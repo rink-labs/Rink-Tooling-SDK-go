@@ -1,4 +1,4 @@
-module github.com/ava-labs/avalanche-tooling-sdk-go
+module github.com/rink-labs/Rink-Tooling-SDK-go
 
 go 1.24.9
 

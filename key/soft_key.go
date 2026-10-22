@@ -15,16 +15,15 @@ import (
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/cb58"
-	"github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/crypto/secp256k1"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/ava-labs/libevm/crypto"
 
-	"github.com/ava-labs/avalanche-tooling-sdk-go/network"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/utils"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/network"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/utils"
 
-	sdkConstants "github.com/ava-labs/avalanche-tooling-sdk-go/constants"
+	sdkConstants "github.com/rink-labs/Rink-Tooling-SDK-go/constants"
 )
 
 var (
@@ -299,8 +298,13 @@ func (m *SoftKey) GetNetworkChainAddress(network network.Network, chain string) 
 	if chain != "P" && chain != "X" {
 		return nil, fmt.Errorf("only P or X is accepted as a chain option")
 	}
-	// Parse HRP to create valid address
-	hrp := constants.GetHRP(network.ID)
-	addressStr, error := address.Format(chain, hrp, m.privKey.PublicKey().Address().Bytes())
-	return []string{addressStr}, error
+	hrp, err := network.AddressHRP()
+	if err != nil {
+		return nil, fmt.Errorf("unable to determine address HRP: %w", err)
+	}
+	addressStr, err := address.Format(chain, hrp, m.privKey.PublicKey().Address().Bytes())
+	if err != nil {
+		return nil, err
+	}
+	return []string{addressStr}, nil
 }

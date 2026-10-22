@@ -14,10 +14,10 @@ import (
 	"github.com/ava-labs/libevm/common"
 	"github.com/ava-labs/libevm/core/types"
 
-	"github.com/ava-labs/avalanche-tooling-sdk-go/evm"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/evm/contract"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/network"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/validatormanager/validatormanagertypes"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/evm"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/evm/contract"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/network"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/validatormanager/validatormanagertypes"
 
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	warpMessage "github.com/ava-labs/avalanchego/vms/platformvm/warp/message"

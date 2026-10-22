@@ -14,7 +14,7 @@ import (
 
 	_ "embed"
 
-	"github.com/ava-labs/avalanche-tooling-sdk-go/utils"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/utils"
 )
 
 const (

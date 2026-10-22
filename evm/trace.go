@@ -11,7 +11,7 @@ import (
 	"github.com/ava-labs/libevm/crypto"
 	"github.com/ava-labs/subnet-evm/rpc"
 
-	"github.com/ava-labs/avalanche-tooling-sdk-go/utils"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/utils"
 )
 
 var ErrUnknownErrorSelector = fmt.Errorf("unknown error selector")

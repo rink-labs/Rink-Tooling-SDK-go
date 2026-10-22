@@ -29,11 +29,11 @@ import (
 	"github.com/ava-labs/subnet-evm/utils"
 	"go.uber.org/zap"
 
-	"github.com/ava-labs/avalanche-tooling-sdk-go/evm"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/interchain"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/network"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/validatormanager"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/vm"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/evm"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/interchain"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/network"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/validatormanager"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/vm"
 
 	pbproposervm "github.com/ava-labs/avalanchego/connectproto/pb/proposervm"
 	pb "github.com/ava-labs/avalanchego/connectproto/pb/proposervm/proposervmconnect"
@@ -203,7 +203,7 @@ type DeployParams struct {
 // New takes SubnetParams as input and creates Subnet as an output
 //
 // The created Subnet object can be used to :
-//   - Create the Subnet on a specified network (Fuji / Mainnet)
+//   - Create the Subnet on a specified RINK network
 //   - Create Blockchain(s) in the Subnet
 //   - Add Validator(s) into the Subnet
 func New(subnetParams *SubnetParams) (*Subnet, error) {

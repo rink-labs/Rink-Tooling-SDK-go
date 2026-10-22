@@ -20,10 +20,10 @@ import (
 	"github.com/cubist-labs/cubesigner-go-sdk/models"
 	"golang.org/x/exp/maps"
 
-	"github.com/ava-labs/avalanche-tooling-sdk-go/constants"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/utils"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/constants"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/network"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/utils"
 
-	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	avasecp256k1 "github.com/ava-labs/avalanchego/utils/crypto/secp256k1"
 	secp256k1 "github.com/decred/dcrd/dcrec/secp256k1/v4"
 )
@@ -239,7 +239,10 @@ func (s *cubesignerSigner) Sign(b []byte) ([]byte, error) {
 	if chainAlias == constants.CChainAlias {
 		materialID = s.pubKey.EthAddress().Hex()
 	} else {
-		hrp := avagoconstants.GetHRP(networkID)
+		hrp, ok := network.HRPForNetworkID(networkID)
+		if !ok {
+			return nil, fmt.Errorf("unable to determine address HRP: %w: %d", network.ErrUnknownNetworkID, networkID)
+		}
 		addr := s.pubKey.Address()
 		var err error
 		materialID, err = address.FormatBech32(hrp, addr.Bytes())

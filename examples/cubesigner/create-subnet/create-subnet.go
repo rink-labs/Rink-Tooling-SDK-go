@@ -15,7 +15,7 @@ import (
 	"github.com/cubist-labs/cubesigner-go-sdk/client"
 	"github.com/cubist-labs/cubesigner-go-sdk/session"
 
-	"github.com/ava-labs/avalanche-tooling-sdk-go/keychain/cubesigner"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/keychain/cubesigner"
 )
 
 func main() {
@@ -47,11 +47,17 @@ func main() {
 		return
 	}
 
-	// Create primary wallet on Fuji testnet
+	rinkEndpoint := os.Getenv("RINK_RPC_ENDPOINT")
+	if rinkEndpoint == "" {
+		log.Printf("RINK_RPC_ENDPOINT environment variable is required")
+		return
+	}
+
+	// Create primary wallet on RINK network
 	ctx := context.Background()
 	wallet, err := primary.MakeWallet(
 		ctx,
-		primary.FujiAPIURI,
+		rinkEndpoint,
 		kc,
 		kc,
 		primary.WalletConfig{},

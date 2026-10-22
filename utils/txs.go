@@ -7,7 +7,7 @@ import (
 	"github.com/ava-labs/avalanchego/wallet/chain/x/builder"
 	"github.com/ava-labs/coreth/plugin/evm/atomic"
 
-	"github.com/ava-labs/avalanche-tooling-sdk-go/constants"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/constants"
 
 	avmtxs "github.com/ava-labs/avalanchego/vms/avm/txs"
 	platformvmtxs "github.com/ava-labs/avalanchego/vms/platformvm/txs"

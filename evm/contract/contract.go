@@ -17,8 +17,8 @@ import (
 	"github.com/ava-labs/libevm/core/types"
 	"github.com/ava-labs/subnet-evm/accounts/abi/bind"
 
-	"github.com/ava-labs/avalanche-tooling-sdk-go/evm"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/utils"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/evm"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/utils"
 )
 
 var ErrFailedReceiptStatus = fmt.Errorf("failed receipt status")

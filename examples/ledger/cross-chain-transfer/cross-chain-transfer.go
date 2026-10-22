@@ -11,13 +11,14 @@
 // Prerequisites:
 // - Ledger device connected and unlocked
 // - Avalanche app open on the Ledger
-// - Sufficient AVAX balance on Fuji P-Chain for the Ledger address
+// - Sufficient AVAX balance on RINK P-Chain for the Ledger address
 package main
 
 import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	"github.com/ava-labs/avalanchego/utils/constants"
@@ -27,7 +28,7 @@ import (
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary/common"
 
-	"github.com/ava-labs/avalanche-tooling-sdk-go/keychain/ledger"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/keychain/ledger"
 )
 
 func main() {
@@ -49,11 +50,17 @@ func main() {
 		return
 	}
 
+	rinkEndpoint := os.Getenv("RINK_RPC_ENDPOINT")
+	if rinkEndpoint == "" {
+		log.Printf("RINK_RPC_ENDPOINT environment variable is required")
+		return
+	}
+
 	// Create wallet
 	ctx := context.Background()
 	wallet, err := primary.MakeWallet(
 		ctx,
-		primary.FujiAPIURI,
+		rinkEndpoint,
 		kc,
 		kc,
 		primary.WalletConfig{},

@@ -14,12 +14,11 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/cavaliergopher/grab/v3"
 	"github.com/stretchr/testify/require"
 
-	"github.com/ava-labs/avalanche-tooling-sdk-go/network"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/network"
 )
 
 func TestNewGetter(t *testing.T) {
@@ -34,10 +33,15 @@ func TestNewGetter(t *testing.T) {
 }
 
 func TestNewDownloader(t *testing.T) {
-	downloader, err := NewDownloader(network.Network{ID: constants.FujiID}, logging.NewLogger("public-archive-downloader", logging.NewWrappedCore(logging.Info, os.Stdout, logging.JSON.ConsoleEncoder())))
+	downloader, err := NewDownloader(network.FujiNetwork(), logging.NewLogger("public-archive-downloader", logging.NewWrappedCore(logging.Info, os.Stdout, logging.JSON.ConsoleEncoder())))
 	require.NoError(t, err, "NewDownloader should not return an error")
 	require.NotNil(t, downloader.logger, "downloader logger should not be nil")
 	require.NotNil(t, downloader.getter.client, "downloader getter client should not be nil")
+}
+
+func TestNewDownloaderRejectsNonFuji(t *testing.T) {
+	_, err := NewDownloader(network.RinkMainnetNetwork(), logging.NoLog{})
+	require.ErrorContains(t, err, "Fuji only supported")
 }
 
 func TestDownloader_Download(t *testing.T) {
@@ -135,12 +139,16 @@ func TestDownloader_UnpackTo(t *testing.T) {
 }
 
 func TestDownloader_EndToEnd(t *testing.T) {
+	if os.Getenv("RUN_PUBLIC_ARCHIVE_E2E") == "" {
+		t.Skip("set RUN_PUBLIC_ARCHIVE_E2E=1 to download the public archive")
+	}
+
 	// Set up a temporary directory for testing
 	tmpDir := t.TempDir()
 	targetDir := filepath.Join(tmpDir, "extracted_files")
 
 	// Configure the test network (Fuji in this case)
-	net := network.Network{ID: constants.FujiID}
+	net := network.FujiNetwork()
 
 	// Step 1: Create the downloader
 	downloader, err := NewDownloader(net, logging.NewLogger("public-archive-downloader", logging.NewWrappedCore(logging.Debug, os.Stdout, logging.JSON.ConsoleEncoder())))

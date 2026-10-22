@@ -7,9 +7,9 @@ import (
 
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 
-	"github.com/ava-labs/avalanche-tooling-sdk-go/account"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/constants"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/network"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/account"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/constants"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/network"
 )
 
 // SendTxOutput represents a generic interface for sent transaction results

@@ -1,6 +1,6 @@
 # Public Archive Downloader SDK
 
-This Go package provides a utility to download and extract tar archives from public URLs. It's tailored for downloading Avalanche network archives but can be adapted for other use cases.
+This Go package provides a utility to download and extract tar archives from public URLs. It currently supports the upstream Avalanche Fuji public archive only. No verified RINK archive URL is shipped with this fork, so RINK archive support must be added explicitly once a trusted URL is available.
 
 
 ## Features
@@ -12,26 +12,25 @@ This Go package provides a utility to download and extract tar archives from pub
 
 ## Usage example
 
-```
+```go
 // Copyright (C) 2025, Ava Labs, Inc. All rights reserved
 // See the file LICENSE for licensing terms.
 
-```
 package main
 
 import (
 	"fmt"
 	"os"
 
-	"github.com/ava-labs/avalanche-tooling-sdk-go/network"
-	"github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/logging"
-	"github.com/your-repo-name/publicarchive"
+
+	"github.com/rink-labs/Rink-Tooling-SDK-go/network"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/publicarchive"
 )
 
 func main() {
 	// Initialize the downloader
-	downloader, err := publicarchive.NewDownloader(network.FujiNetwork(), logging.Debug)
+	downloader, err := publicarchive.NewDownloader(network.FujiNetwork(), logging.NoLog{})
 	if err != nil {
 		fmt.Printf("Failed to create downloader: %v\n", err)
 		os.Exit(1)

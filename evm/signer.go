@@ -13,7 +13,7 @@ import (
 	"github.com/ava-labs/libevm/core/types"
 	"github.com/ava-labs/subnet-evm/accounts/abi/bind"
 
-	"github.com/ava-labs/avalanche-tooling-sdk-go/key"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/key"
 )
 
 // Signer provides signing capabilities for EVM transactions

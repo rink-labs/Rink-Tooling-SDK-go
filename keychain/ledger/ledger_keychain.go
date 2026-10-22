@@ -18,8 +18,8 @@ import (
 	"github.com/ava-labs/libevm/common"
 	"golang.org/x/exp/maps"
 
-	"github.com/ava-labs/avalanche-tooling-sdk-go/constants"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/utils"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/constants"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/utils"
 )
 
 var (

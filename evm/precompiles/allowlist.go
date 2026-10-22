@@ -8,8 +8,8 @@ import (
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/libevm/common"
 
-	"github.com/ava-labs/avalanche-tooling-sdk-go/evm"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/evm/contract"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/evm"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/evm/contract"
 )
 
 func SetAdmin(

@@ -7,8 +7,8 @@ import (
 
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
 
-	"github.com/ava-labs/avalanche-tooling-sdk-go/wallet/chains/pchain"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/wallet/types"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/wallet/chains/pchain"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/wallet/types"
 )
 
 // SignTx constructs a transaction for the specified operation

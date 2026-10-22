@@ -118,7 +118,7 @@ linters-settings:
       - standard
       - default
       - blank
-      - prefix(github.com/ava-labs/avalanche-tooling-sdk-go)
+      - prefix(github.com/rink-labs/Rink-Tooling-SDK-go)
       - alias
       - dot
     custom-order: true

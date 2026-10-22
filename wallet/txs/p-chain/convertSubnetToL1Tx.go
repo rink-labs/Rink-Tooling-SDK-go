@@ -5,7 +5,7 @@ package txs
 import (
 	"fmt"
 
-	"github.com/ava-labs/avalanche-tooling-sdk-go/constants"
+	"github.com/rink-labs/Rink-Tooling-SDK-go/constants"
 )
 
 // ConvertSubnetToL1TxParams contains all parameters needed to create a ConvertSubnetToL1Tx
